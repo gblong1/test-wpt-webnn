@@ -13,7 +13,7 @@ async function getTestEnvironmentInfo(currentVersion) {
   const environmentInfo = {};
   environmentInfo["hostname"] = os.hostname();
   environmentInfo["platform"] = os.platform();
-  environmentInfo["testUrl"] = "https://wpt.live/webnn/conformance_tests/";
+  environmentInfo["testUrl"] = "https://web-platform.test:8443/webnn/conformance_tests/";
   environmentInfo[config.targetBrowser] = currentVersion;
   config.targetBackendOrEP.forEach((backendOrEP) => {
     const commandKey = `testCommand (${backendOrEP})`;

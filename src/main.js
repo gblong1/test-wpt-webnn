@@ -37,7 +37,7 @@ async function getConformanceTestLinks() {
   const page = await browser.newPage();
   page.setDefaultTimeout(msTimeout);
 
-  await page.goto("https://wpt.live/webnn/conformance_tests", {
+  await page.goto("https://web-platform.test:8443/webnn/conformance_tests", {
     waitUntil: "domcontentloaded",
   });
   await page.$("ul");
@@ -59,10 +59,14 @@ function killBrowser() {
 }
 
 function getLaunchArgs(backendOrEP) {
+  const proxyBypassArgs = ["--no-proxy-server"];
   if (backendOrEP === undefined) {
-    return [];
+    return [...proxyBypassArgs];
   }
-  return JSON.parse(JSON.stringify(config.browserLaunchArgs[backendOrEP]));
+  return [
+    ...JSON.parse(JSON.stringify(config.browserLaunchArgs[backendOrEP])),
+    ...proxyBypassArgs,
+  ];
 }
 
 async function setBrowser(backendOrEP) {

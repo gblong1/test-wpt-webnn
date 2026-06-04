@@ -60,7 +60,7 @@ function getConfig() {
 }
 
 function getTestsuiteName(link) {
-  const startIndex = "https://wpt.live/webnn/conformance_tests/".length;
+  const startIndex = "https://web-platform.test:8443/webnn/conformance_tests/".length;
   const tailLength = ".https.any.js".length;
   const rawName = link.slice(startIndex, link.length - tailLength);
   const partArray = rawName.split("_");
