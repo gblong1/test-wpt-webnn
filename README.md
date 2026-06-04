@@ -66,3 +66,54 @@ Please modify settings in config_customEP.json and rename it as config.json if y
 ```batch
 npm test
 ```
+
+### Execution Flow
+
+```mermaid
+flowchart TD
+    Start([npm test → node src/main.js]) --> LoadConfig[getConfig - utils.js<br/>strip JSON comments<br/>expand ToReplaceBy* placeholders]
+    LoadConfig --> Version[getBrowserVersion via reg query<br/>read result/LastTestedVersion<br/>mkdir result/&lt;currentVersion&gt;/]
+    Version --> Discover[getConformanceTestLinks<br/>puppeteer → web-platform.test/webnn/conformance_tests<br/>collect li.file hrefs]
+    Discover --> EmptyCheck{testLinks empty?}
+    EmptyCheck -- yes --> End([exit])
+    EmptyCheck -- no --> BackendLoop[for each backendOrEP<br/>in config.targetBackendOrEP]
+
+    BackendLoop --> RunByDevice[runByDevice testLinks, backendOrEP]
+    RunByDevice --> LinkLoop[for each test link]
+    LinkLoop --> Launch[killBrowser → setBrowser backendOrEP<br/>open testLink?&lt;deviceType&gt;<br/>open chrome://gpu]
+    Launch --> Scan{scan WebNN log<br/>+ results table}
+
+    Scan -- GPU process crashed --> CrashRow[push Crash row<br/>add link to crashTestLinks]
+    Scan -- Timeout / Not Run --> TimeoutLink[push link to<br/>timeoutTestLinks]
+    Scan -- normal results --> ScrapeResults[scrape #results tbody → results array]
+
+    CrashRow --> NextLink{more links?}
+    TimeoutLink --> NextLink
+    ScrapeResults --> NextLink
+    NextLink -- yes --> LinkLoop
+    NextLink -- no --> RetryCheck{timeoutTestLinks<br/>not empty?}
+
+    RetryCheck -- yes, retries &lt; 3 --> Retry[runByDevice timeoutTestLinks<br/>lastRerun = retry === 2]
+    Retry --> RetryCheck
+    RetryCheck -- no / retries exhausted --> WriteCsv[write conformance_tests_result-&lt;backend&gt;.csv]
+
+    WriteCsv --> MoreBackends{more backends?}
+    MoreBackends -- yes --> BackendLoop
+    MoreBackends -- no --> SaveVersion[write LastTestedVersion file]
+
+    SaveVersion --> MailDecision{currentVersion ===<br/>lastVersion?}
+    MailDecision -- yes --> SkipMail[send 'no new build, skipped' email]
+    MailDecision -- no --> EnvInfo[getTestEnvironmentInfo<br/>CPU / GPU / NPU details]
+    EnvInfo --> Summary[getSummaryResult<br/>readCsv current + last<br/>diffResults → newPass / regressions]
+    Summary --> BuildHtml[formatResultsAsHTMLTable<br/>env • pass rate • new pass<br/>regression • crash • not-run]
+    BuildHtml --> SendMail[nodemailer sendMail<br/>attach per-backend CSVs]
+
+    SkipMail --> Cleanup[killBrowser]
+    SendMail --> Cleanup
+    Cleanup --> End
+
+    classDef phase fill:#0474C4,color:#fff,stroke:#023a66;
+    classDef decision fill:#fff4c2,stroke:#a07900;
+    class Start,End phase;
+    class EmptyCheck,Scan,NextLink,RetryCheck,MoreBackends,MailDecision decision;
+```
